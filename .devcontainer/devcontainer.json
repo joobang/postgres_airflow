@@ -1,0 +1,16 @@
+{
+    "name": "airflow:2.3.3-python3.9",
+	"build": {
+		"dockerfile": "../Dockerfile",
+		"context": ".."
+	},
+    "customizations": {
+        // Configure properties specific to VS Code.
+        "vscode": {
+          // Add the IDs of extensions you want installed when the container is created.
+          "extensions": ["ms-python.python", "ms-python.vscode-pylance"]
+        }
+    },
+    "workspaceMount": "source=${localWorkspaceFolder}/,target=/opt/airflow/src,type=bind",
+    "workspaceFolder": "/opt/airflow/src"
+}

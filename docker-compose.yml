@@ -1,0 +1,97 @@
+version: "3.8"
+
+x-base_opt: &base_opt
+  build:
+    context: .
+  restart: always
+  depends_on:
+    - postgres_airflow
+    - postgres_analytics
+  environment:
+    - PYTHONPATH=/opt/airflow
+    - FERNET_KEY=${AIRFLOW_FERNET_KEY}
+    - AIRFLOW_HOME=/opt/airflow
+
+    # Configurations
+    - AIRFLOW__CORE__DAG_DISCOVERY_SAFE_MODE=False
+    - AIRFLOW__CORE__ENABLE_XCOM_PICKLING=False
+    - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+    - AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS=False
+    - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    - AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG=3
+    - AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG=4
+    - AIRFLOW__CORE__MIN_SERIALIZED_DAG_UPDATE_INTERVAL=120
+    - AIRFLOW__CORE__MIN_SERIALIZED_DAG_FETCH_INTERVAL=60
+    - AIRFLOW__CORE__PARALLELISM=4
+    - AIRFLOW__CORE__STORE_DAG_CODE=True
+    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow
+    - AIRFLOW__LOGGING__LOGGING_LEVEL=INFO
+    - AIRFLOW__SCHEDULER__PARSING_PROCESSES=1
+    - AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC=120
+    - AIRFLOW__WEBSERVER__PAGE_SIZE=50
+    - AIRFLOW__WEBSERVER__SECRET_KEY=g7QoAYgAxe6N3taMNL9hcAgDPEx # Random generated
+
+    # Connections
+    - AIRFLOW_CONN_ANALYTICS_DB=postgresql+psycopg2://airflow:airflow@postgres_analytics:5432/analytics
+
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://0.0.0.0:8080/health"]
+    interval: 30s
+    timeout: 30s
+    retries: 3
+
+services:
+  # Postgres for Airflow Backend:
+  postgres_airflow:
+    image: "postgres:13.8"
+    container_name: "postgres_airflow"
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_airflow_data:/var/lib/postgresql/data
+
+  # Postgres for Analytics (Uses port 5433 instead of port 5432)
+  postgres_analytics:
+    build:
+      context: ./analytics_db
+    container_name: "postgres_analytics"
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=analytics
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_analytics_data:/var/lib/postgresql/data
+
+  initdb:
+    build: .
+    environment:
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow
+      - AIRFLOW__CORE__FERNET_KEY=$AIRFLOW_FERNET_KEY
+    entrypoint: ["./wait-for-it.sh", "postgres_airflow:5432 -t 10", "--", "airflow", "db", "init"]
+    depends_on:
+      - postgres_airflow
+
+  webserver:
+    << : *base_opt
+    container_name: airflow-webserver
+    ports:
+      - "8080:8080"
+    command: "airflow webserver"
+    entrypoint: []
+
+  scheduler:
+    container_name: airflow-scheduler
+    << : *base_opt
+    command: "airflow scheduler"
+    entrypoint: []
+
+volumes:
+  postgres_airflow_data:
+  postgres_analytics_data:

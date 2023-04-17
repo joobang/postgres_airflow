@@ -1,0 +1,8 @@
+# Core
+apache-airflow==2.3.3
+
+## Provider
+apache-airflow-providers-postgres==2.3.0
+
+# Database
+psycopg==3.1.1

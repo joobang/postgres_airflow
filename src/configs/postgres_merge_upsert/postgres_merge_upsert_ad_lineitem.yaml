@@ -1,0 +1,17 @@
+---
+pipeline_type: postgres_merge_upsert
+pipeline_key: ad_lineitem
+pipeline_dag_configs:
+  start_date: 2022-09-01 15:00:00
+  schedule_interval: "0 15 * * *"
+
+postgres:
+  conn_id: analytics_db
+
+execution_delay_seconds: 3600
+
+merge_upsert:
+  destination_table: ad_lineitem
+  staging_table: ad_lineitem_staging
+  unique_keys: 
+  - id
