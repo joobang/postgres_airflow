@@ -21,8 +21,8 @@ up: ## Build and start airflow
 reset-data: ## Reset all analytics data
 	@docker stop $$(docker ps -a --filter "name=postgres_analytics" -q)
 	@docker rm $$(docker ps -a --filter "name=postgres_analytics" -q)
-	@docker volume rm data-engineer-assignment_postgres_analytics_data
+	@docker volume rm ehwnghks-gmailcom_postgres_analytics_data
 
 	@docker stop $$(docker ps -a --filter "name=postgres_airflow" -q)
 	@docker rm $$(docker ps -a --filter "name=postgres_airflow" -q)
-	@docker volume rm data-engineer-assignment_postgres_airflow_data
+	@docker volume rm ehwnghks-gmailcom_postgres_airflow_data
