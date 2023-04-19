@@ -22,7 +22,7 @@ max_active_tis_per_dag : 하나의 DAG에서 동시에 실행할 수 있는 최�
 """
 dag_default_args: Dict[str, Any] = {
     **DAG_DEFAULT_ARGS,
-    'start_date': datetime(2023, 4, 18),
+    'start_date': datetime(2022, 9, 1),
     'max_active_tis_per_dag': 2,
 }
 
@@ -30,7 +30,7 @@ with DAG(
     'postgres_merge_upsert_ad_lineitem_test',
     default_args=dag_default_args,
     description='This DAG merge-upserts the `ad_lineitem` table in the analytics_db with CDC logs from the source table',
-    schedule_interval='0 * * * *',
+    schedule_interval='@once',
 ) as dag:
 
     table = 'ad_lineitem'
@@ -55,14 +55,24 @@ with DAG(
                     updated_at
                 FROM
                     {{ params.table }}_staging
+                WHERE 
+                    updated_at >= TIMESTAMP'{{ params.start_time }}'
+                    AND updated_at < TIMESTAMP'{{ params.end_time }}'
                 ORDER BY id, updated_at
             )
             ;
 
             DELETE FROM
             {{ params.table }}_staging
+            WHERE 
+                updated_at >= TIMESTAMP'{{ params.start_time }}'
+                AND updated_at < TIMESTAMP'{{ params.end_time }}'
             ;
         """,
-        params={'table': table},
+        params={
+            'table': table,
+            'start_time': '2022-09-01 00:00:00',
+            'end_time': '2022-09-01 01:00:00'
+        },
         postgres_conn_id="analytics_db",
     )
