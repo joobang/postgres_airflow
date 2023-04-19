@@ -20,7 +20,55 @@
 
   스케쥴 시간대에 staging 데이터 개수와 ad_lineitem, units에 적재된 카운트 수를 비교,
 
-  같으면 true, 다르면 false 처리?
+- 같으면 true, 다르면 false 처리 로직?
+
+  units는 ad_lineitem과 다르게 init 데이터에 update_at가 null이라 다른방법?
+  
+  같으면 staging 데이터 지우고 commit, 다르면 롤백. 그러면 실패한 시간대 데이터 처리방법은?
+
+```
+--ad_lineitem
+begin;
+
+savepoint my_savepoint;
+
+insert into	ad_lineitem
+    select distinct on (id) 
+        id,
+	    revenue_type,
+	    created_at,
+	    updated_at
+    from
+	    ad_lineitem_staging
+    where
+	    updated_at >= TIMESTAMP'2022-09-01 00:00:00'
+	    and updated_at < TIMESTAMP'2022-09-01 01:00:00'
+    order by id, updated_at desc;
+
+select COUNT(*)
+from ad_lineitem
+where
+	updated_at >= TIMESTAMP'2022-09-01 00:00:00'
+	and updated_at < TIMESTAMP'2022-09-01 01:00:00';
+
+select COUNT(distinct id)
+from
+	ad_lineitem_staging
+where
+	updated_at >= TIMESTAMP'2022-09-01 00:00:00'
+	and updated_at < TIMESTAMP'2022-09-01 01:00:00';
+
+----True
+delete from ad_lineitem_staging
+where
+	updated_at >= TIMESTAMP'2022-09-01 00:00:00'
+	and updated_at < TIMESTAMP'2022-09-01 01:00:00';
+commit;
+
+------False
+rollback to my_savepoint;
+commit;
+```
 
 1-2. postgres_transform_load_m1_d_ad_mart_metrics DAG의 Transform + Load가 idempotent하게 구현이 되어있는지?
 
