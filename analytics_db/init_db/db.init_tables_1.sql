@@ -54,3 +54,10 @@ CREATE TABLE m1_d_ad_unit_metrics (
     created_at         TIMESTAMP,
     updated_at         TIMESTAMP
 );
+
+CREATE TABLE ad_lineitem_scheduler (
+    staging_count   BIGINT,
+    query_count   BIGINT,
+    started_at    TIMESTAMP,
+    end_at     TIMESTAMP
+);

@@ -17,58 +17,12 @@
   방법3 : MAX(update_at)값으로 JOIN 이용해서 적재.
 
 - 정합성 체크를 위해서 스케쥴이 실행되는 정각 기준 한시간씩 시간을 나눠 적재하고 적재카운트를 체크한다.
-
-  스케쥴 시간대에 staging 데이터 개수와 ad_lineitem, units에 적재된 카운트 수를 비교,
-
-- 같으면 true, 다르면 false 처리 로직?
-
-  units는 ad_lineitem과 다르게 init 데이터에 update_at가 null이라 다른방법?
   
-  같으면 staging 데이터 지우고 commit, 다르면 롤백. 그러면 실패한 시간대 데이터 처리방법은?
+  - 트랜잭션을 이용해서 카운트 체크로 같으면 그대로 진행하고 다르면 롤백하는 로직은 미션 2번에서 빌더로 템플릿화 하기 힘들기 때문에 다른 방법 모색.
 
-```
---ad_lineitem
-begin;
+  - 적재 카운트를 적어놓는 적재 로그테이블 생성하여 특정시간 적재기록 체크.
 
-savepoint my_savepoint;
-
-insert into	ad_lineitem
-    select distinct on (id) 
-        id,
-	    revenue_type,
-	    created_at,
-	    updated_at
-    from
-	    ad_lineitem_staging
-    where
-	    updated_at >= TIMESTAMP'2022-09-01 00:00:00'
-	    and updated_at < TIMESTAMP'2022-09-01 01:00:00'
-    order by id, updated_at desc;
-
-select COUNT(*)
-from ad_lineitem
-where
-	updated_at >= TIMESTAMP'2022-09-01 00:00:00'
-	and updated_at < TIMESTAMP'2022-09-01 01:00:00';
-
-select COUNT(distinct id)
-from
-	ad_lineitem_staging
-where
-	updated_at >= TIMESTAMP'2022-09-01 00:00:00'
-	and updated_at < TIMESTAMP'2022-09-01 01:00:00';
-
-----True
-delete from ad_lineitem_staging
-where
-	updated_at >= TIMESTAMP'2022-09-01 00:00:00'
-	and updated_at < TIMESTAMP'2022-09-01 01:00:00';
-commit;
-
-------False
-rollback to my_savepoint;
-commit;
-```
+ units는 ad_lineitem과 다르게 init 데이터에 update_at가 null이라 다른방법?
 
 1-2. postgres_transform_load_m1_d_ad_mart_metrics DAG의 Transform + Load가 idempotent하게 구현이 되어있는지?
 

@@ -30,7 +30,7 @@ with DAG(
     'postgres_merge_upsert_ad_lineitem_test',
     default_args=dag_default_args,
     description='This DAG merge-upserts the `ad_lineitem` table in the analytics_db with CDC logs from the source table',
-    schedule_interval='@once',
+    schedule_interval='0 * * * *',
 ) as dag:
 
     table = 'ad_lineitem'
@@ -44,8 +44,8 @@ with DAG(
                 {{ params.table }}_staging
             WHERE
                 {{ params.table }}.id = {{ params.table }}_staging.id
-                AND {{ params.table }}.updated_at >= TIMESTAMP'{{ params.start_time }}'
-                AND {{ params.table }}.updated_at < TIMESTAMP'{{ params.end_time }}'
+                AND {{ params.table }}_staging.updated_at >= TIMESTAMP'{{ data_interval_start }}'
+                AND {{ params.table }}_staging.updated_at < TIMESTAMP'{{ data_interval_end }}'
             ;
 
             INSERT INTO {{ params.table }}
@@ -58,23 +58,39 @@ with DAG(
                 FROM
                     {{ params.table }}_staging
                 WHERE 
-                    updated_at >= TIMESTAMP'{{ params.start_time }}'
-                    AND updated_at < TIMESTAMP'{{ params.end_time }}'
+                    updated_at >= TIMESTAMP'{{ data_interval_start }}'
+                    AND updated_at < TIMESTAMP'{{ data_interval_end }}'
                 ORDER BY id, updated_at
+            )
+            ;
+            
+            INSERT INTO {{ params.table }}_scheduler
+            (
+                SELECT 
+                    (SELECT COUNT(DISTINCT id)
+                        FROM {{ params.table }}_staging
+                        WHERE
+                            updated_at >= TIMESTAMP'{{ data_interval_start }}'
+                            AND updated_at < TIMESTAMP'{{ data_interval_end }}') as staging_count,
+                    (SELECT COUNT(*)
+                        FROM {{ params.table }}
+                        WHERE
+                            updated_at >= TIMESTAMP'{{ data_interval_start }}'
+                            AND updated_at < TIMESTAMP'{{ data_interval_end }}') as staging_count,
+                    TIMESTAMP'{{ data_interval_start }}' as started_at,
+                    TIMESTAMP'{{ data_interval_end }}' as end_at
             )
             ;
 
             DELETE FROM
             {{ params.table }}_staging
             WHERE 
-                updated_at >= TIMESTAMP'{{ params.start_time }}'
-                AND updated_at < TIMESTAMP'{{ params.end_time }}'
+                updated_at >= TIMESTAMP'{{ data_interval_start }}'
+                AND updated_at < TIMESTAMP'{{ data_interval_end }}'
             ;
         """,
         params={
-            'table': table,
-            'start_time': '2022-09-01 00:00:00',
-            'end_time': '2022-09-01 01:00:00'
+            'table': table
         },
         postgres_conn_id="analytics_db",
     )
