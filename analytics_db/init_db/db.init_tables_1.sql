@@ -61,3 +61,10 @@ CREATE TABLE ad_lineitem_scheduler (
     started_at    TIMESTAMP,
     end_at     TIMESTAMP
 );
+
+CREATE TABLE unit_scheduler (
+    staging_count   BIGINT,
+    query_count   BIGINT,
+    started_at    TIMESTAMP,
+    end_at     TIMESTAMP
+);
