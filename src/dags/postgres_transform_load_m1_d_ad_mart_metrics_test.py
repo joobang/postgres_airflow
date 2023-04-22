@@ -37,10 +37,9 @@ with DAG(
         sql="""
             DELETE FROM
                 {{ params.table }}
-            USING
-                {{ params.table }}
             WHERE
-                {{ params.table }}.data_at = DATE_TRUNC('hour',TIMESTAMP'{{ data_interval_start }}')
+                data_at >= TIMESTAMP'{{ data_interval_start }}'
+                and data_at < TIMESTAMP'{{ data_interval_end }}'
             ;
             
             INSERT INTO {{ params.table }}
@@ -88,7 +87,7 @@ with DAG(
                 inner join ad_lineitem l
                        ON aggs.lineitem_id = l.id
                 inner join unit u
-                       ON aggs.unit_id = u.id;
+                       ON aggs.unit_id = u.id
             )
             ;
             
@@ -135,7 +134,8 @@ with DAG(
                     (SELECT COUNT(*)
                         FROM {{ params.table }}
                         WHERE
-                            {{ params.table }}.data_at = DATE_TRUNC('hour',TIMESTAMP'{{ data_interval_start }}') as mart_count,
+                            {{ params.table }}.data_at >= TIMESTAMP'{{ data_interval_start }}'
+                            and {{ params.table }}.data_at < TIMESTAMP'{{ data_interval_end }}') as mart_count,
                     TIMESTAMP'{{ data_interval_start }}' as started_at,
                     TIMESTAMP'{{ data_interval_end }}' as end_at
             )
