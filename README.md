@@ -21,11 +21,13 @@
   
   - {table}_scheduler 테이블을 만들어 시간 별 카운트 수 체크.
 
-- 첫 시행때만 start_date와 전의 데이터도 적재하기 위해 BranchPythonOperator 사용하여 task 분기시켜서 적재.
+- 첫 시행때만 start_date 전의 데이터도 적재하기 위해 BranchPythonOperator 사용하여 task 분기시켜서 적재.
 
 1-2. postgres_transform_load_m1_d_ad_mart_metrics DAG의 Transform + Load가 idempotent하게 구현이 되어있는지?
 
 1-3. postgres_transform_load_m1_d_ad_mart_metrics DAG가 Fact와 Mart 데이터간 정합성을 보장할 수 있게끔 구현이 되어있는지?
+
+**src/postgres_transform_load_m1_d_ad_mart_metrics_part1.py**
 
 - postgres_transform_load_m1_d_ad_mart_metrics DAG의 Transform + Load가 여러번 실행되어도 동일한 결과가 나온다. 하지만 UNION된 두개의 select문에서 중복데이터가 발생할 수 있다.
     -  data_at, lienitem_id, unit_id로 그룹화하여 중복데이터를 없애고, 중복데이터를 방지하기위해 merge_upsert dag처럼 INSERT 전에 현재 적재할 시간범위의 데이터를 mart테이블에서 삭제하고 INSERT하게 변경.
