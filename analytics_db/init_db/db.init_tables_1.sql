@@ -68,3 +68,10 @@ CREATE TABLE unit_scheduler (
     started_at    TIMESTAMP,
     end_at     TIMESTAMP
 );
+
+CREATE TABLE m1_d_ad_unit_metrics_scheduler (
+    mart_count   BIGINT,
+    query_count   BIGINT,
+    started_at    TIMESTAMP,
+    end_at     TIMESTAMP
+);
