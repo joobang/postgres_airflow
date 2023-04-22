@@ -37,7 +37,7 @@ with DAG(
         sql="""
             INSERT INTO {{ params.table }}
             (
-                SELECT
+                SELECT 
                     aggs.lineitem_id,
                     l.revenue_type,
                     u.unit_type,
@@ -46,44 +46,41 @@ with DAG(
                     aggs.impression_count,
                     aggs.click_count,
                     aggs.revenue_sum
-                FROM
-                (
-                    SELECT
-                        DATE_TRUNC('hour', created_at) AS data_at,
-                        lineitem_id,
-                        unit_id,
-                        COUNT(*)                       AS impression_count,
-                        0                              AS click_count,
-                        SUM(revenue)                   AS revenue_sum
-                    FROM
-                        ad_impression
-                    WHERE
-                        created_at >= TIMESTAMP'{{ data_interval_start }}'
-                        AND created_at < TIMESTAMP'{{ data_interval_end }}'
-                    GROUP BY
-                        1, 2, 3
-
-                    UNION ALL
-
-                    SELECT
-                        DATE_TRUNC('hour', created_at) AS data_at,
-                        lineitem_id,
-                        unit_id,
-                        0                              AS impression_count,
-                        COUNT(*)                       AS click_count,
-                        SUM(revenue)                   AS revenue_sum
-                    FROM
-                        ad_click
-                    WHERE
-                        created_at >= TIMESTAMP'{{ data_interval_start }}'
-                        AND created_at < TIMESTAMP'{{ data_interval_end }}'
-                    GROUP BY
-                        1, 2, 3
+                FROM   (
+                    SELECT t.data_at,
+                        t.lineitem_id,
+                        t.unit_id,
+                        SUM(t.impression_count) AS impression_count,
+                        SUM(t.click_count)      AS click_count,
+                        SUM(t.revenue_sum)      AS revenue_sum
+                    FROM   (
+                        SELECT Date_trunc('hour', created_at) AS data_at,
+                            lineitem_id,
+                            unit_id,
+                            Count(*)                       AS impression_count,
+                            0                              AS click_count,
+                            SUM(revenue)                   AS revenue_sum
+                        FROM   ad_impression
+                        WHERE  created_at >= timestamp'2022-09-01T00:00:00+00:00'
+                            AND created_at < timestamp'2022-09-02T00:00:00+00:00'
+                        GROUP  BY 1,2,3
+                        UNION ALL
+                        SELECT Date_trunc('hour', created_at) AS data_at,
+                            lineitem_id,
+                            unit_id,
+                            0                              AS impression_count,
+                            Count(*)                       AS click_count,
+                            SUM(revenue)                   AS revenue_sum
+                        FROM   ad_click
+                        WHERE  created_at >= timestamp'2022-09-01T00:00:00+00:00'
+                               AND created_at < timestamp'2022-09-02T00:00:00+00:00'
+                        GROUP  BY 1,2,3) t
+                    GROUP  BY t.data_at,t.lineitem_id,t.unit_id
                 ) aggs
-                    INNER JOIN ad_lineitem l ON
-                        aggs.lineitem_id = l.id
-                    INNER JOIN unit u ON
-                        aggs.unit_id = u.id
+                inner join ad_lineitem l
+                       ON aggs.lineitem_id = l.id
+                inner join unit u
+                       ON aggs.unit_id = u.id;
             )
             ;
         """,

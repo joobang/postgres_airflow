@@ -14,7 +14,7 @@ dag_default_args: Dict[str, Any] = {
 }
 
 with DAG(
-    'postgres_merge_upsert_unit',
+    'postgres_merge_upsert_unit_original',
     default_args=dag_default_args,
     description='This DAG that merge-upserts the `units` table in the analytics_db with CDC logs from the source table',
     schedule_interval='0 * * * *',
