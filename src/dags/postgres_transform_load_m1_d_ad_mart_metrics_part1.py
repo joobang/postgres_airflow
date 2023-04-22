@@ -16,7 +16,7 @@ dag_default_args: Dict[str, Any] = {
 }
 
 with DAG(
-    'postgres_transform_load_m1_d_ad_mart_metrics_test',
+    'postgres_transform_load_m1_d_ad_mart_metrics_part1',
     default_args=dag_default_args,
     description='This DAG builds `m1_d_ad_mart_metrics` mart table.',
     schedule_interval='0 15 * * *',

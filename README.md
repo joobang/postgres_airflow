@@ -16,17 +16,20 @@
 
   방법3 : MAX(update_at)값으로 JOIN 이용해서 적재.
 
-- 정합성 체크를 위해서 스케쥴이 실행되는 정각 기준 한시간씩 시간을 나눠 적재하고 적재카운트를 체크한다.
+**src/postgres_merge_upsert_ad_lineitem_part1.py, postgres_merge_upsert_unit_part1.py**
+- 기존의 dag는 전체데이터를 대상으로 merge_upsert를 진행했기 때문에 처리할 데이터의 범위가 명확하지 않아 추후 데이터 비교 시 어려울 가능성이 있다. 정합성 체크를 위해서 스케쥴 시간에 맞춰 시간별로 데이터를 적재하고 추후에 카운트 비교할 수 있도록 변경했다.
   
-  - 트랜잭션을 이용해서 카운트 체크로 같으면 그대로 진행하고 다르면 롤백하는 로직은 미션 2번에서 빌더로 템플릿화 하기 힘들기 때문에 다른 방법 모색.
+  - {table}_scheduler 테이블을 만들어 시간 별 카운트 수 체크.
 
-  - 적재 카운트를 적어놓는 적재 로그테이블 생성하여 특정시간 적재기록 체크.
-
- units는 ad_lineitem과 다르게 init 데이터에 update_at가 null이라 다른방법?
+- 첫 시행때만 start_date와 전의 데이터도 적재하기 위해 BranchPythonOperator 사용하여 task 분기시켜서 적재.
 
 1-2. postgres_transform_load_m1_d_ad_mart_metrics DAG의 Transform + Load가 idempotent하게 구현이 되어있는지?
 
 1-3. postgres_transform_load_m1_d_ad_mart_metrics DAG가 Fact와 Mart 데이터간 정합성을 보장할 수 있게끔 구현이 되어있는지?
+
+- postgres_transform_load_m1_d_ad_mart_metrics DAG의 Transform + Load가 여러번 실행되어도 동일한 결과가 나온다. 하지만 UNION된 두개의 select문에서 중복데이터가 발생할 수 있다.
+    -  data_at, lienitem_id, unit_id로 그룹화하여 중복데이터를 없애고, 중복데이터를 방지하기위해 merge_upsert dag처럼 INSERT 전에 현재 적재할 시간범위의 데이터를 mart테이블에서 삭제하고 INSERT하게 변경.
+    - 정합성 체크를 위해 {table}_scheduler 테이블을 만들어 시간 별 카운트 수 체크.
 
 ### 미션2. 기존의 Airflow 환경을 셀프 서빙 플랫폼으로 업그레이드하기
 
