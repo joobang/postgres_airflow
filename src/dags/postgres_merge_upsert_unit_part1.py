@@ -14,6 +14,8 @@ dag_default_args: Dict[str, Any] = {
     'max_active_tis_per_dag': 2,
 }
 
+#start_date 이전 데이터를 적재하기 위한 함수.
+#첫 시행일 때만 first_merge_upsert task를 실행하고 나머지는 normal_merge_upsert 실행.
 def is_first_date(**kwargs):
     start_date = kwargs['dag'].default_args['start_date']
     data_interval_start = kwargs['data_interval_start']
@@ -32,7 +34,7 @@ with DAG(
 ) as dag:
 
     table = 'unit'
-
+    # normal_merge_upsert는 일반적인 upsert 작업으로 schedule_interval 만큼의 데이터를 적재한다.
     normal_merge_upsert = PostgresOperator(
         task_id='normal_merge_upsert',
         sql="""
@@ -93,7 +95,7 @@ with DAG(
         },
         postgres_conn_id="analytics_db",
     )
-    
+    # start_date 이전의 데이터를 적재하기 위한 task로 첫 시행일때만 data_interval_end 이전 데이터를 적재한다.
     first_merge_upsert = PostgresOperator(
         task_id='first_merge_upsert',
         sql="""
@@ -149,7 +151,7 @@ with DAG(
         },
         postgres_conn_id="analytics_db",
     )
-
+    # 첫 시행인지 구분하기위한 task
     task_branch = BranchPythonOperator(
         task_id='task_branch',
         python_callable=is_first_date,

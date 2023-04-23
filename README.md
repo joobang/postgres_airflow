@@ -58,5 +58,10 @@
 
 1-2. postgres_merge_upsert 타입의 YAML 스펙(configs/configs/postgres_merge_upsert/README.md), 그리고 해당 스펙들에 맞추어 작성된 YAML 명세를 확인하시고 DAG Builder 구현.
 
-1-3. DBT에서 플랫폼 유저에게 어떤 인터페이스를 제공하는지를 참고하기.
+**src/builder.py**
 
+- configs/postgres_merge_upsert의 *.yaml 파일을 읽어서 Dag를 생성하는 builder
+
+- configs/postgres_merge_upsert/README.md를 참고하여 src/dags/postgres_merge_upsert_*_part1.py 와 같은 작업을 하는 DAG를 생성하고 globals() 전역변수에 yaml별 dag를 등록해 airflow에서 인식하도록 했다.
+
+- yaml 의 execution_delay_seconds, upstream_dependencies 값에 따라 TimeDeltaSensorAsync, ExternalTaskSensor task를 생성하여 의존성 설정을 추가했다.

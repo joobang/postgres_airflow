@@ -10,17 +10,11 @@ from airflow import DAG
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.operators.python import BranchPythonOperator
 from airflow.sensors.time_delta import TimeDeltaSensor
+from airflow.sensors.time_delta import TimeDeltaSensorAsync
 from airflow.sensors.external_task import ExternalTaskSensor
 
-"""
-is_first_date : start_date 이전 데이터를 적재하기 위한 함수.
-                첫 시행일 때만 first_merge_upsert task를 실행하고 나머지는 normal_merge_upsert 실행.
-
-load_yaml : yaml 파일 읽어오는 함수.
-
-dag_template : yaml 파일을 읽어서 dag를 등록하는 함수.
-
-"""
+#start_date 이전 데이터를 적재하기 위한 함수.
+#첫 시행일 때만 first_merge_upsert task를 실행하고 나머지는 normal_merge_upsert 실행.
 def is_first_date(**kwargs):
     start_date = kwargs['dag'].default_args['start_date']
     data_interval_start = kwargs['data_interval_start']
@@ -30,11 +24,14 @@ def is_first_date(**kwargs):
     else:
         return 'normal_merge_upsert'
 
+
+#yaml 파일을 읽고 가져오는 함수.
 def load_yaml(file_path: str):
     with open(file_path, 'r') as file:
         yaml_data = yaml.safe_load(file)
     return yaml_data
 
+#yaml 파일의 값으로 DAG를 만드는 함수.
 def dag_template(yaml_data):
     dag_default_args: Dict[str, Any] = {
         **yaml_data['pipeline_dag_configs']['default_args'],
@@ -58,8 +55,11 @@ def dag_template(yaml_data):
     staging_table = merge_upsert['staging_table']
     unique_keys = ','.join(merge_upsert['unique_keys'])    
     
+    # 위에서 설정한 config 값으로 dag 생성하는 함수.
     @dag(dag_id=dag_id, default_args=dag_default_args,description='This DAG merge-upserts '+yaml_data['pipeline_key'],schedule_interval=yaml_data['pipeline_dag_configs']['schedule_interval'])    
     def yaml_dag():
+        
+        # normal_merge_upsert는 일반적인 upsert 작업으로 schedule_interval 만큼의 데이터를 적재한다.
         normal_merge_upsert = PostgresOperator(
             task_id='normal_merge_upsert',
             sql="""
@@ -124,6 +124,7 @@ def dag_template(yaml_data):
             postgres_conn_id=yaml_data['postgres']['conn_id'],
         )
 
+        # start_date 이전의 데이터를 적재하기 위한 task로 첫 시행일때만 data_interval_end 이전 데이터를 적재한다.
         first_merge_upsert = PostgresOperator(
             task_id='first_merge_upsert',
             sql="""
@@ -183,20 +184,21 @@ def dag_template(yaml_data):
             postgres_conn_id=yaml_data['postgres']['conn_id'],
         )
         
+        # 첫 시행인지 구분하기위한 task
         task_branch = BranchPythonOperator(
             task_id='task_branch',
             python_callable=is_first_date,
             provide_context=True
         )
         
+        # execution_delay_seconds가 yaml 파일에 정의 되어 있을 경우 TimeDeltaSensorAsync task 생성.
         if 'execution_delay_seconds' in yaml_data:
-            wait_for_logs = TimeDeltaSensor(
+            wait_for_logs = TimeDeltaSensorAsync(
                     task_id='wait_for_logs',
-                    mode='reschedule',
-                    timeout=1800,
-                    poke_interval=5,
                     delta=timedelta(seconds=yaml_data['execution_delay_seconds']),
+                    trigger_rule = "none_skipped"
             )
+            # upstream_dependencies가 yaml 파일에 정의 되어 있을 경우 ExternalTaskSensor로 dag 의존성 연결
             if 'upstream_dependencies' in yaml_data:
                 last_task = None
                 for upstream in yaml_data['upstream_dependencies']:
@@ -211,7 +213,7 @@ def dag_template(yaml_data):
                         last_task >> updag
                     last_task = updag
                 
-                last_task >> wait_for_logs >> task_branch >> [first_merge_upsert,normal_merge_upsert] 
+                wait_for_logs >> last_task >> task_branch >> [first_merge_upsert,normal_merge_upsert] 
             else:
                 wait_for_logs >> task_branch >> [first_merge_upsert,normal_merge_upsert]  
         else:
@@ -221,6 +223,8 @@ def dag_template(yaml_data):
 
 file_dir = os.path.dirname(os.path.abspath(__file__+'/../'))
 
+# configs/postgres_merge_upsert 밑에 .yaml 파일을 읽으며 dag를 생성하고
+# dag를 globals 전역변수에 등록해 airflow에서 인식하도록 했다.
 for merge_upsert in os.listdir(file_dir+'/configs/postgres_merge_upsert'):
     if merge_upsert.endswith('.yaml'):
         file_path = os.path.join(file_dir+'/configs/postgres_merge_upsert/', merge_upsert)

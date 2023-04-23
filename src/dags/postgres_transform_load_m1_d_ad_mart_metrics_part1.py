@@ -32,6 +32,11 @@ with DAG(
         delta=timedelta(seconds=3600),
     )
 
+    """
+    하루 광고 노출, 클릭 정보 집게하는 통계 마트 테이블 UNION 결과를 lineitem_id, unit_id, data_at로 그룹화하여
+    두 통계의 click_count, impression_count, revenue_sum 합산하고 중복을 제거하도록 수정. 
+    중복을 막기위해 INSERT전에 스케쥴 시간만큼의 데이터를 지우고, 적재 로그 테이블(scheduler)에 카운트를 기록하게 수정.
+    """
     transform_load = PostgresOperator(
         task_id='transform_load',
         sql="""
