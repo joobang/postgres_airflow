@@ -69,7 +69,8 @@ with DAG(
                         FROM {{ params.table }}_staging
                         WHERE
                             updated_at >= TIMESTAMP'{{ data_interval_start }}'
-                            AND updated_at < TIMESTAMP'{{ data_interval_end }}') as staging_count,
+                            AND updated_at < TIMESTAMP'{{ data_interval_end }}'
+                        ORDER BY id, updated_at) as staging_count,
                     (SELECT COUNT(*)
                         FROM {{ params.table }}
                         WHERE
@@ -126,7 +127,8 @@ with DAG(
                     (SELECT COUNT(DISTINCT id)
                         FROM {{ params.table }}_staging
                         WHERE
-                            updated_at < TIMESTAMP'{{ data_interval_end }}') as staging_count,
+                            updated_at < TIMESTAMP'{{ data_interval_end }}'
+                        ORDER BY id, updated_at) as staging_count,
                     (SELECT COUNT(*)
                         FROM {{ params.table }}
                         WHERE

@@ -2,9 +2,28 @@
 
 
 과제에 대한 설명은 readme 폴더([1_instructions.md](/readme/1_instructions.md), [2_datasets.md](/readme/2_datasets.md), [3_boilerplated.md](/readme/3_boilerplates.md))에서 확인할 수 있습니다.
-## 미션설명
 
-### 미션1. 파이프라인 결함 확인하고 보완하기
+## 변경사항
+```bash
+ ┣ 📂analytics_db
+ ┃ ┣ 📂init_db
+ ┃ ┃ ┣ 📜db.init_tables_1.sql      --> scheduler 테이블 추가
+ ┃ ┃ ┗ 📜db.init_tables_5_insert_unit.sql   -->  update, create time 추가
+ ┣ 📂src
+ ┃ ┣ 📂configs
+ ┃ ┃ ┗ 📂postgres_merge_upsert
+ ┃ ┃ ┃ ┣ 📜postgres_merge_upsert_ad_lineitem.yaml   -->  pipeline_dag_configs.default_args 추가
+ ┃ ┃ ┃ ┗ 📜postgres_merge_upsert_unit.yaml    -->  pipeline_dag_configs.default_args 추가
+ ┃ ┣ 📂dags
+ ┃ ┃ ┣ 📜builder.py   --> part2 과제
+ ┃ ┃ ┣ 📜postgres_merge_upsert_ad_lineitem_part1.py   --> part1 과제
+ ┃ ┃ ┣ 📜postgres_merge_upsert_unit_part1.py    --> part1 과제
+ ┃ ┃ ┗ 📜postgres_transform_load_m1_d_ad_mart_metrics_part1.py    --> part1 과제
+``` 
+
+## 과제설명
+
+### 과제1. 파이프라인 결함 확인하고 보완하기
 
 1-1. postgres_merge_upsert_ad_lineitem과 postgres_merge_upsert_units DAG가 원본 운영계 테이블과의 정합성을 보장하는 방식으로 ETL이 이루어지는지?
 
@@ -33,7 +52,7 @@
     -  data_at, lienitem_id, unit_id로 그룹화하여 중복데이터를 없애고, 중복데이터를 방지하기위해 merge_upsert dag처럼 INSERT 전에 현재 적재할 시간범위의 데이터를 mart테이블에서 삭제하고 INSERT하게 변경.
     - 정합성 체크를 위해 {table}_scheduler 테이블을 만들어 시간 별 카운트 수 체크.
 
-### 미션2. 기존의 Airflow 환경을 셀프 서빙 플랫폼으로 업그레이드하기
+### 과제2. 기존의 Airflow 환경을 셀프 서빙 플랫폼으로 업그레이드하기
 
 1-1. Python의 숙련도가 없는 Data Analyst도 분석 SQL과 YAML만으로도 DAG를 생성할 수 있도록 DAG Builder를 구현하는 것이 목표입니다.
 

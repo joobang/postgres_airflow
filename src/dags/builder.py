@@ -10,6 +10,7 @@ from airflow import DAG
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.operators.python import BranchPythonOperator
 from airflow.sensors.time_delta import TimeDeltaSensor
+from airflow.sensors.external_task import ExternalTaskSensor
 
 """
 is_first_date : start_date 이전 데이터를 적재하기 위한 함수.
@@ -81,7 +82,7 @@ def dag_template(yaml_data):
                     WHERE 
                         updated_at >= TIMESTAMP'{{ data_interval_start }}'
                         AND updated_at < TIMESTAMP'{{ data_interval_end }}'
-                    ORDER BY id, updated_at
+                    ORDER BY {{ params.unique_keys }}, updated_at
                 )
                 ;
 
@@ -93,10 +94,11 @@ def dag_template(yaml_data):
                                 SELECT DISTINCT ON ({{ params.unique_keys }})
                                     *
                                 FROM {{ params.staging_table }}
-                            ) t
-                            WHERE
-                                t.updated_at >= TIMESTAMP'{{ data_interval_start }}'
-                                AND t.updated_at < TIMESTAMP'{{ data_interval_end }}') as staging_count,
+                                WHERE
+                                    updated_at >= TIMESTAMP'{{ data_interval_start }}'
+                                    AND updated_at < TIMESTAMP'{{ data_interval_end }}'
+                                ORDER BY {{ params.unique_keys }}, updated_at
+                            ) t ) as staging_count,
                         (SELECT COUNT(*)
                             FROM {{ params.destination_table }}
                             WHERE
@@ -131,7 +133,7 @@ def dag_template(yaml_data):
                     {{ params.staging_table }}
                 WHERE
                     {{ params.destination_table }}.id = {{ params.staging_table }}.id
-                    AND {{ params.destination_table }}.updated_at < TIMESTAMP'{{ data_interval_end }}'
+                    AND {{ params.staging_table }}.updated_at < TIMESTAMP'{{ data_interval_end }}'
                 ;
 
                 INSERT INTO {{ params.destination_table }}
@@ -142,7 +144,7 @@ def dag_template(yaml_data):
                         {{ params.staging_table }}
                     WHERE 
                         updated_at < TIMESTAMP'{{ data_interval_end }}'
-                    ORDER BY id, updated_at
+                    ORDER BY {{ params.unique_keys }}, updated_at
                 )
                 ;
 
@@ -154,9 +156,10 @@ def dag_template(yaml_data):
                                 SELECT DISTINCT ON ({{ params.unique_keys }})
                                     *
                                 FROM {{ params.staging_table }}
-                            ) t
-                            WHERE
-                                t.updated_at < TIMESTAMP'{{ data_interval_end }}') as staging_count,
+                                WHERE
+                                    updated_at < TIMESTAMP'{{ data_interval_end }}'
+                                ORDER BY {{ params.unique_keys }}, updated_at
+                            ) t ) as staging_count,
                         (SELECT COUNT(*)
                             FROM {{ params.destination_table }}
                             WHERE
