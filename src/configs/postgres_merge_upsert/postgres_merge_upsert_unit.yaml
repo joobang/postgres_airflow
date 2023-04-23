@@ -1,10 +1,16 @@
 ---
 pipeline_type: postgres_merge_upsert
-pipeline_key: unit
+pipeline_key: unit_builder
 pipeline_dag_configs:
   start_date: 2021-09-01 15:00:00
   schedule_interval: "0 15 * * *"
-
+  default_args: {
+    weight_rule: absolute,
+    owner: interviewee,
+    depends_on_past: False,
+    retry_delay: 5,
+    retries: 1,
+  }
 postgres:
   conn_id: analytics_db
 
