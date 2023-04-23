@@ -191,23 +191,39 @@ def dag_template(yaml_data):
         
         if 'execution_delay_seconds' in yaml_data:
             wait_for_logs = TimeDeltaSensor(
-                task_id='wait_for_logs',
-                mode='reschedule',
-                timeout=1800,
-                poke_interval=5,
-                delta=timedelta(seconds=yaml_data['execution_delay_seconds']),
+                    task_id='wait_for_logs',
+                    mode='reschedule',
+                    timeout=1800,
+                    poke_interval=5,
+                    delta=timedelta(seconds=yaml_data['execution_delay_seconds']),
             )
-            wait_for_logs >> task_branch >> [first_merge_upsert,normal_merge_upsert]  
+            if 'upstream_dependencies' in yaml_data:
+                last_task = None
+                for upstream in yaml_data['upstream_dependencies']:
+                    updag = ExternalTaskSensor(
+                        task_id='wait_for_'+upstream['dag_id'],
+                        external_dag_id=upstream['dag_id'],
+                        execution_delta=timedelta(seconds=upstream.get('timedelta_seconds',0)),
+                        poke_interval=upstream.get('poke_interval',180),
+                        timeout=upstream.get('timeout',7200),
+                    )
+                    if last_task:
+                        last_task >> updag
+                    last_task = updag
+                
+                last_task >> wait_for_logs >> task_branch >> [first_merge_upsert,normal_merge_upsert] 
+            else:
+                wait_for_logs >> task_branch >> [first_merge_upsert,normal_merge_upsert]  
         else:
             task_branch >> [first_merge_upsert,normal_merge_upsert]  
     
     return yaml_dag()
 
-config_path = './configs/postgres_merge_upsert'
- 
-for merge_upsert in os.listdir(config_path):
+file_dir = os.path.dirname(os.path.abspath(__file__+'/../'))
+
+for merge_upsert in os.listdir(file_dir+'/configs/postgres_merge_upsert'):
     if merge_upsert.endswith('.yaml'):
-        file_path = os.path.join(config_path, merge_upsert)
+        file_path = os.path.join(file_dir+'/configs/postgres_merge_upsert/', merge_upsert)
         yaml_data = load_yaml(file_path)
         
         globals()[yaml_data['pipeline_type']+'_'+yaml_data['pipeline_key']] = dag_template(yaml_data)

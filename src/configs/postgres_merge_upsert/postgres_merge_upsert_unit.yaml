@@ -17,7 +17,7 @@ postgres:
 execution_delay_seconds: 3600
 
 upstream_dependencies:
-- dag_id: postgres_merge_upsert_ad_lineitem
+- dag_id: postgres_merge_upsert_ad_lineitem_builder
   timedelta_seconds: 0
 
 merge_upsert:
