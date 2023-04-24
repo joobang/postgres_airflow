@@ -196,7 +196,6 @@ def dag_template(yaml_data):
             wait_for_logs = TimeDeltaSensorAsync(
                     task_id='wait_for_logs',
                     delta=timedelta(seconds=yaml_data['execution_delay_seconds']),
-                    trigger_rule = "none_skipped"
             )
             # upstream_dependencies가 yaml 파일에 정의 되어 있을 경우 ExternalTaskSensor로 dag 의존성 연결
             if 'upstream_dependencies' in yaml_data:

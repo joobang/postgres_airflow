@@ -92,6 +92,12 @@ services:
     command: "airflow scheduler"
     entrypoint: []
 
+  triggerer:
+    container_name: airflow-triggerer
+    << : *base_opt
+    command: "airflow triggerer"
+    entrypoint: []
+
 volumes:
   postgres_airflow_data:
   postgres_analytics_data:

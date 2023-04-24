@@ -16,7 +16,7 @@ up: ## Build and start airflow
 	docker-compose run --name airflow-create-user --rm webserver \
 		./wait-for-it.sh postgres:5432 -t 10 -- airflow users create -e admin@example.org -f admin -l admin -p admin -r Admin -u admin \
 		&& echo 'User is created. ID: admin, PW: admin'
-	@docker-compose up --build webserver scheduler
+	@docker-compose up --build webserver scheduler triggerer
 
 reset-data: ## Reset all analytics data
 	@docker stop $$(docker ps -a --filter "name=postgres_analytics" -q)
